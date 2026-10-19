@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Lakbay Kasaysayan — Anime Battle Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#071023; --panel:#0b1220cc; --accent1:#7c3aed; --accent2:#06b6d4; --good:#34d399; --bad:#fb7185; --text:#e6eef8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,Arial;background:radial-gradient(900px 400px at 10% 10%, rgba(7,16,35,0.7), transparent),linear-gradient(180deg,var(--bg),#051226);color:var(--text);-webkit-font-smoothing:antialiased;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.03)}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800}
+  h1{font-family:Orbitron, sans-serif;margin:0;font-size:18px;color:#ffd700}
+  .controls{display:flex;gap:8px;align-items:center}
+  main{max-width:1200px;margin:18px auto;padding:12px}
+  .stage-area{display:grid;grid-template-columns:380px 1fr;gap:16px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+  .side{position:sticky;top:18px;height:max-content}
+  .char-row{display:flex;gap:12px;align-items:center}
+  .portrait{width:120px;height:120px;border-radius:12px;background:#021427;border:2px solid rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+  .portrait svg{width:96px;height:96px}
+  .char-info{flex:1}
+  .hpbar{height:12px;background:#001022;border-radius:8px;overflow:hidden;margin-top:8px}
+  .hp{height:100%;background:linear-gradient(90deg,var(--good),#10b981);width:100%;transition:width 400ms linear}
+  .enemy .hp{background:linear-gradient(90deg,#fb7185,#f97316)}
+  .battle-area{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);min-height:360px;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+  .battle-top{display:flex;justify-content:space-between;align-items:center}
+  .battle-stage{display:flex;gap:24px;align-items:center;justify-content:space-between}
+  .center-stage{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .action-log{height:100px;overflow:auto;background:#021426;border-radius:8px;padding:8px;font-size:13px;color:var(--text);border:1px solid rgba(255,255,255,0.03)}
+  .question-box{background:linear-gradient(90deg, rgba(255,255,255,0.01), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  .choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+  .choice{background:#021a2a;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:600;text-align:center}
+  .choice.correct{box-shadow:0 6px 18px rgba(16,185,129,0.12);border-color:#10b981}
+  .choice.wrong{box-shadow:0 6px 18px rgba(239,68,68,0.12);border-color:#fb7185}
+  .effects{position:relative}
+  .hit-anim{position:absolute;inset:0;pointer-events:none}
+  .flash{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 18px;border-radius:10px;background:linear-gradient(90deg,#ffffff22,#ffffff11);font-weight:800;color:#fff;mix-blend-mode:screen;opacity:0;transition:opacity 360ms ease}
+  .show{opacity:1}
+  .vfx-slice{position:absolute;width:160px;height:24px;background:linear-gradient(90deg, #fff4, #fff0);left:0;top:0;transform:skewX(-20deg);opacity:0;animation:slice 700ms ease forwards}
+  @keyframes slice{0%{transform:translateX(-220px) skewX(-20deg);opacity:1}100%{transform:translateX(420px) skewX(-20deg);opacity:0}}
+  .win{background:linear-gradient(90deg,#34d399,#60a5fa);padding:8px;border-radius:8px;color:#022;font-weight:800}
+  .lose{background:linear-gradient(90deg,#fb7185,#f97316);padding:8px;border-radius:8px;color:#200;font-weight:800}
+  .floating-ui{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:10px}
+  .fab{width:56px;height:56px;border-radius:999px;background:linear-gradient(90deg,var(--accent1),var(--accent2));display:flex;align-items:center;justify-content:center;border:none;font-weight:800;cursor:pointer}
+  footer{margin-top:20px;text-align:center;color:#9ca3af;font-size:13px}
+  @media (max-width:900px){ .stage-area{grid-template-columns:1fr} .portrait{width:84px;height:84px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">LK</div>
+    <div>
+      <h1>Lakbay Kasaysayan — Anime Battle</h1>
+      <div style="color:#9ca3af;font-size:13px">Answer to attack. Defeat enemies to level up.</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="downloadHTML" class="fab" title="Download HTML">⬇️</button>
+    <button id="helpBtn" class="fab" title="Help">❓</button>
+  </div>
+</header>
+
+<main>
+  <div class="stage-area">
+    <aside class="side">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:800">Player</div>
+            <div style="font-size:13px;color:#9ca3af">Pangalan</div>
+            <div id="playerNameDisplay" style="font-weight:700;margin-top:6px">Mag-aaral</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:#9ca3af">Level</div>
+            <div id="playerLevel" style="font-weight:800">1</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="char-row">
+          <div class="portrait">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+              <rect rx="12" width="100" height="100" fill="url(#g1)"/>
+              <circle cx="50" cy="38" r="20" fill="#fff1" />
+              <circle cx="42" cy="36" r="3" fill="#001"/>
+              <circle cx="58" cy="36" r="3" fill="#001"/>
+              <path d="M40 48 Q50 60 60 48" stroke="#001" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="char-info">
+            <div style="font-weight:700" id="playerTitle">AKIRO</div>
+            <div class="meta">Guide & warrior</div>
+            <div class="hpbar" style="margin-top:8px"><div id="playerHP" class="hp" style="width:100%"></div></div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:6px">HP <span id="playerHPText">100</span>/100</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="display:flex;gap:8px">
+            <input id="nameInput" placeholder="Ilagay pangalan" style="flex:1;padding:8px;border-radius:8px;border:1px solid #122234;background:transparent;color:var(--text)">
+            <button class="btn" id="saveProfile">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Progress</div>
+          <div id="xpText" style="color:#9ca3af">XP 0</div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="hpbar"><div id="xpBar" class="hp" style="width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent1))"></div></div>
+        </div>
+        <div style="margin-top:10px" class="meta">Defeat enemies to earn XP and coins.</div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:800">Teacher</div><div><button id="teacherLogin" class="btn secondary">Login</button></div></div>
+        <div class="meta" style="margin-top:8px">Teacher tools (password-protected) — reset/export/import available in full build.</div>
+      </div>
+
+    </aside>
+
+    <section>
+      <div class="card battle-area">
+        <div class="battle-top">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="font-weight:800;font-size:16px" id="encounterTitle">Encounter: Rajah Bandido</div>
+            <div class="meta" id="enemyLevel">Lv 1</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="meta">Coins <span id="coinCount">0</span></div>
+            <div class="meta">Enemies defeated <span id="defeatedCount">0</span></div>
+          </div>
+        </div>
+
+        <div class="battle-stage">
+          <div style="width:260px;text-align:center">
+            <div style="font-weight:700">PLAYER</div>
+            <div style="margin-top:8px" class="portrait"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect rx="12" width="100" height="100" fill="url(#g1)"/><circle cx="50" cy="38" r="18" fill="#fff2"/></svg></div>
+          </div>
+
+          <div class="center-stage">
+            <div style="font-weight:900;font-size:18px" id="stageName">Battle</div>
+            <div style="font-size:13px;color:#9ca3af" id="battleHint">Answer to attack. Wrong = enemy attacks.</div>
+            <div style="width:100%;max-width:680px" id="actionArea">
+              <div class="question-box" id="questionBox">
+                <div id="questionText" style="font-weight:800">Choose a stage to begin</div>
+                <div class="choices" id="choices"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="width:260px;text-align:center">
+            <div style="font-weight:700">ENEMY</div>
+            <div style="margin-top:8px" class="portrait"><svg id="enemySVG" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect rx="12" width="100" height="100" fill="#2b1220"/><circle cx="50" cy="36" r="20" fill="#fff1"/><rect x="30" y="58" width="40" height="10" rx="5" fill="#0008"/></svg></div>
+            <div class="hpbar" style="margin-top:8px"><div id="enemyHP" class="hp" style="width:100%"></div></div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:6px">HP <span id="enemyHPText">100</span>/100</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+          <div class="effects" style="flex:1">
+            <div id="vfx" class="hit-anim"></div>
+            <div id="flash" class="flash"></div>
+          </div>
+          <div style="width:320px">
+            <div style="display:flex;gap:8px">
+              <button class="btn" id="startEncounter">Start Encounter</button>
+              <button class="btn secondary" id="fleeBtn">Flee</button>
+            </div>
+            <div style="margin-top:8px" class="action-log" id="log">Welcome to Lakbay Anime Battle.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="floating-ui">
+  <button class="fab" id="installBtn" title="Install (when available)">⬇︎</button>
+</div>
+
+<footer>Save file and open in browser. Serve via localhost/HTTPS for full PWA features.</footer>
+
+<script>
+/* Battle mechanics + animations + simple VFX.
+   Self-contained — no external assets required other than Google Fonts.
+*/
+
+const player = { maxHP:100, hp:100, level:1, xp:0, coins:0, name:'Mag-aaral' };
+let enemy = null;
+let defeated = 0;
+let inEncounter = false;
+const logEl = document.getElementById('log');
+const questionText = document.getElementById('questionText');
+const choicesEl = document.getElementById('choices');
+const vfx = document.getElementById('vfx');
+const flash = document.getElementById('flash');
+
+const sampleEnemies = [
+  { id:1, name:'Rajah Bandido', hp:80, atk:8, level:1 },
+  { id:2, name:'Espada Brigante', hp:110, atk:12, level:2 },
+  { id:3, name:'Lord Alcalde', hp:150, atk:16, level:3 }
+];
+
+const quizBank = [
+  { q:'Ano ang tawag sa sinaunang pagsulat?', choices:['Baybayin','Alibata','Kudlit','Kulitan'], a:0 },
+  { q:'Sino ang sumulat ng Noli Me Tangere?', choices:['Rizal','Bonifacio','Aguinaldo','Mabini'], a:0 },
+  { q:'Anong araw ang Araw ng Kalayaan?', choices:['June 12','March 1','Aug 31','Dec 30'], a:0 },
+  { q:'Ano ang malapit na anyong tubig?', choices:['Dagat','Bundok','Disyerto','Gubat'], a:0 },
+  { q:'Sino ang Ama ng Himagsikan?', choices:['Bonifacio','Rizal','Aguinaldo','Del Pilar'], a:0 }
+];
+
+function appendLog(text){ const p = document.createElement('div'); p.innerText = `[${new Date().toLocaleTimeString()}] ${text}`; logEl.prepend(p); }
+
+function setPlayerName(n){ player.name = n || 'Mag-aaral'; document.getElementById('playerNameDisplay').innerText = player.name; }
+document.getElementById('saveProfile').addEventListener('click', ()=>{ setPlayerName(document.getElementById('nameInput').value); appendLog('Profile saved: ' + player.name); });
+
+function startEncounter(){ if(inEncounter) return; const idx = Math.min(sampleEnemies.length-1, Math.floor(defeated/2)); const base = sampleEnemies[idx]; enemy = { ...base, hp: base.hp + idx*20 }; inEncounter = true; document.getElementById('encounterTitle').innerText = `Encounter: ${enemy.name}`; document.getElementById('enemyLevel').innerText = 'Lv ' + enemy.level; updateHPDisplays(); appendLog(`A wild ${enemy.name} appears!`); nextQuestion(); }
+document.getElementById('startEncounter').addEventListener('click', startEncounter);
+
+function flee(){ if(!inEncounter){ appendLog('No encounter to flee.'); return; } appendLog(player.name + ' fled the battle.'); endEncounter(false); }
+document.getElementById('fleeBtn').addEventListener('click', flee);
+
+function updateHPDisplays(){ document.getElementById('playerHP').style.width = (player.hp / player.maxHP * 100) + '%'; document.getElementById('playerHPText').innerText = Math.max(0,player.hp); document.getElementById('enemyHP').style.width = (enemy? Math.max(0, enemy.hp / (enemy.startingHP || enemy.hp) * 100) : 0) + '%'; document.getElementById('enemyHPText').innerText = enemy ? Math.max(0,enemy.hp) : 0; document.getElementById('playerLevel').innerText = player.level; document.getElementById('xpText').innerText = 'XP ' + player.xp; document.getElementById('xpBar').style.width = (player.xp % 100) + '%'; document.getElementById('coinCount').innerText = player.coins; document.getElementById('defeatedCount').innerText = defeated; }
+
+function rndQuestion(){ const q = quizBank[Math.floor(Math.random()*quizBank.length)]; return { q: q.q, choices: [...q.choices], a: q.a }; }
+
+let questionTimer = null; const QUESTION_TIME = 20;
+function nextQuestion(){ if(!inEncounter) return; const q = rndQuestion(); questionText.innerText = q.q; choicesEl.innerHTML = ''; q.choices.forEach((c,i)=>{ const b = document.createElement('button'); b.className='choice'; b.innerText = c; b.addEventListener('click', ()=> handleAnswer(i===q.a, i, c)); choicesEl.appendChild(b); }); if(!enemy.startingHP) enemy.startingHP = enemy.hp; startQuestionTimer(); }
+function startQuestionTimer(){ if(questionTimer) clearTimeout(questionTimer); questionTimer = setTimeout(()=>{ appendLog('Time up! Enemy seizes the chance.'); enemyAttack(); }, QUESTION_TIME*1000); }
+function stopQuestionTimer(){ if(questionTimer) clearTimeout(questionTimer); questionTimer = null; }
+
+function handleAnswer(correct, idx, choiceText){ stopQuestionTimer(); const choices = Array.from(document.querySelectorAll('.choice')); choices.forEach(b=>b.disabled=true); if(correct){ appendLog(player.name + ' answered correctly and attacks!'); animateHit('player'); const damage = Math.max(8, 10 + Math.floor(player.level * 2 * Math.random())); enemy.hp = Math.max(0, enemy.hp - damage); appendLog(`${enemy.name} takes ${damage} damage.`); playSfx('hit'); updateEnemyHPVisual(damage); if(enemy.hp <= 0){ enemyDefeated(); return; } setTimeout(()=> enemyAttack(), 700); } else { appendLog(player.name + ' answered incorrectly.'); choices[idx] && choices[idx].classList.add('wrong'); playSfx('miss'); setTimeout(()=> enemyAttack(), 700); } }
+
+function enemyAttack(){ if(!inEncounter) return; const damage = Math.max(5, enemy.atk + Math.floor(Math.random()*6)); player.hp = Math.max(0, player.hp - damage); animateHit('enemy'); appendLog(`${enemy.name} attacks and deals ${damage} damage to ${player.name}.`); playSfx('enemyHit'); updateHPDisplays(); if(player.hp <= 0){ playerDefeated(); return; } setTimeout(()=> nextQuestion(), 500); }
+
+function animateHit(source){ const slice = document.createElement('div'); slice.className='vfx-slice'; slice.style.top = (Math.random()*40+20)+'%'; vfx.appendChild(slice); setTimeout(()=> slice.remove(), 800); flash.innerText = source === 'player' ? 'CRITICAL!' : 'HIT!'; flash.classList.add('show'); setTimeout(()=> flash.classList.remove('show'), 450); }
+
+function updateEnemyHPVisual(dmg){ if(!enemy.startingHP) enemy.startingHP = enemy.hp + dmg; const pct = Math.max(0, enemy.hp / enemy.startingHP * 100); document.getElementById('enemyHP').style.width = pct + '%'; document.getElementById('enemyHPText').innerText = enemy.hp; }
+
+function enemyDefeated(){ appendLog(`${enemy.name} is defeated!`); playSfx('win'); defeated++; player.xp += 30 + enemy.level * 10; player.coins += 5 + enemy.level * 3; let leveled = false; while(player.xp >= 100){ player.xp -= 100; player.level++; leveled = true; } updateHPDisplays(); showPopup(`Victory! +XP`, true); endEncounter(true); }
+
+function playerDefeated(){ appendLog(`${player.name} has been defeated...`); playSfx('lose'); showPopup('You were defeated', false); player.hp = Math.max(1, Math.floor(player.maxHP * 0.5)); updateHPDisplays(); endEncounter(false); }
+
+function endEncounter(victory){ inEncounter = false; enemy = null; stopQuestionTimer(); document.getElementById('enemyHP').style.width = '0%'; setTimeout(()=> renderStagesUIAfterEncounter(), 600); }
+
+function renderStagesUIAfterEncounter(){ document.getElementById('stageName').innerText = 'Battle'; document.getElementById('questionText').innerText = inEncounter ? 'Answer the question' : 'Start another encounter'; document.getElementById('playerLevel').innerText = player.level; document.getElementById('xpText').innerText = 'XP ' + player.xp; document.getElementById('xpBar').style.width = (player.xp % 100) + '%'; document.getElementById('coinCount').innerText = player.coins; document.getElementById('defeatedCount').innerText = defeated; }
+
+function showPopup(text, good){ flash.innerText = text; flash.classList.add('show'); flash.style.background = good ? 'linear-gradient(90deg,#34d399,#60a5fa)' : 'linear-gradient(90deg,#fb7185,#f97316)'; setTimeout(()=> flash.classList.remove('show'), 1200); }
+
+const audioCtx = (window.AudioContext||window.webkitAudioContext)?new (window.AudioContext||window.webkitAudioContext)():null;
+function playSfx(name){ if(!audioCtx) return; const now = audioCtx.currentTime; const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); switch(name){ case 'hit': o.frequency.setValueAtTime(880, now); g.gain.setValueAtTime(0.08, now); o.type='sine'; break; case 'miss': o.frequency.setValueAtTime(220, now); g.gain.setValueAtTime(0.08, now); o.type='sawtooth'; break; case 'enemyHit': o.frequency.setValueAtTime(180, now); g.gain.setValueAtTime(0.06, now); o.type='triangle'; break; case 'win': o.frequency.setValueAtTime(880, now); g.gain.setValueAtTime(0.12, now); o.type='triangle'; break; case 'lose': o.frequency.setValueAtTime(110, now); g.gain.setValueAtTime(0.12, now); o.type='sawtooth'; break; default: o.frequency.setValueAtTime(440, now); g.gain.setValueAtTime(0.05, now); } o.start(now); g.gain.exponentialRampToValueAtTime(0.0001, now+0.2); o.stop(now+0.25); }
+
+document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='h') alert('Hint: Read the question carefully (this demo shows few questions).'); if(e.key==='Enter' && !inEncounter) startEncounter(); });
+
+document.getElementById('playerNameDisplay').innerText = player.name; updateHPDisplays(); appendLog('Ready. Press Start Encounter to battle.');
+
+document.getElementById('downloadHTML').addEventListener('click', ()=>{ const html = '<!doctype html>\n' + document.documentElement.outerHTML; const blob = new Blob([html], { type: 'text/html' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'Lakbay_Kasaysayan_Anime_Battle.html'; a.click(); setTimeout(()=> URL.revokeObjectURL(url), 1500); });
+
+document.getElementById('teacherLogin').addEventListener('click', ()=>{ const p = prompt('Teacher password:'); if(!p) return; if(p === (localStorage.getItem(teacherKey) || 'teacher123')) alert('Teacher unlocked (demo).'); else alert('Wrong password'); });
+
+</script>
+</body>
+</html>
