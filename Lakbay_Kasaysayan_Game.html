@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Lakbay Kasaysayan — Classroom PWA (single file)</title>
+<style>
+  :root{--bg1:#071029;--bg2:#0f172a;--gold:#FFD700;--accent:#06b6d4;--muted:#9ca3af}
+  *{box-sizing:border-box}
+  body{font-family:Inter,system-ui,Arial,Segoe UI,Roboto,Helvetica,Arial;margin:0;padding:18px;color:#fff;
+    background:radial-gradient(1200px 600px at 10% 10%, rgba(6,8,22,0.7), transparent),
+    linear-gradient(135deg,var(--bg1),var(--bg2));-webkit-font-smoothing:antialiased}
+  header{max-width:1100px;margin:0 auto;text-align:center}
+  h1{color:var(--gold);margin:6px 0;font-weight:700}
+  .container{max-width:1100px;margin:18px auto;display:grid;grid-template-columns:1fr;gap:14px}
+  .dialogue-box{background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));border:1px solid rgba(255,215,0,0.12);padding:12px;border-radius:12px;display:flex;gap:12px;align-items:center;backdrop-filter:blur(4px)}
+  .speaker{color:var(--gold);font-weight:700;min-width:120px}
+  .dialogue{flex:1;font-size:0.98rem}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:14px;margin:6px 0;border:1px solid rgba(255,255,255,0.03)}
+  label{display:block;color:var(--muted);margin-bottom:6px;font-size:0.9rem}
+  input[type="text"], select{width:100%;padding:10px;border-radius:8px;border:1px solid #1f2937;background:transparent;color:#fff}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{background:var(--gold);color:#000;padding:10px 14px;border:none;border-radius:10px;cursor:pointer;font-weight:600}
+  .btn.secondary{background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.06)}
+  .small{padding:6px 10px;font-size:0.9rem;border-radius:8px}
+  .stages-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:8px}
+  .stage{padding:12px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(0,0,0,0.04));border:1px solid rgba(255,255,255,0.02);position:relative;overflow:hidden;min-height:160px;transition:transform .22s ease,box-shadow .22s ease}
+  .stage:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+  .stage.locked{opacity:0.45;transform:none;pointer-events:none}
+  .stage h3{margin:0;color:var(--gold);font-size:1.05rem}
+  .stage p{margin:8px 0;color:var(--muted);font-size:0.9rem}
+  .meta{font-size:0.9rem;color:var(--muted)}
+  .progress-bar{height:10px;background:#0006;border-radius:10px;overflow:hidden;margin-top:8px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));width:0%;transition:width .6s ease}
+  .badge{display:inline-block;background:rgba(255,215,0,0.12);color:var(--gold);padding:6px 8px;border-radius:8px;font-weight:700;margin-left:6px}
+  .question-box{background:linear-gradient(180deg,#021023,#031627);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  .choices{display:grid;gap:10px;margin-top:10px}
+  .choice{background:#031726;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;text-align:left;transition:transform .12s}
+  .choice:hover{transform:translateY(-3px)}
+  .choice[disabled]{opacity:0.6;cursor:default}
+  .choice.correct{outline:3px solid rgba(34,197,94,0.15)}
+  .choice.wrong{outline:3px solid rgba(239,68,68,0.12)}
+  .result{margin-top:10px;padding:10px;border-radius:8px}
+  .result.good{background:rgba(34,197,94,0.08);color:#bbf7d0}
+  .result.bad{background:rgba(239,68,68,0.08);color:#fecaca}
+  .row{display:flex;gap:10px;align-items:center}
+  .left{flex:1}
+  footer{max-width:1100px;margin:20px auto;text-align:center;color:#9ca3af;font-size:0.9rem}
+  .confetti{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1200}
+  .leaderboard{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;margin-top:8px}
+  .hint-btn{background:rgba(255,255,255,0.02);color:var(--gold);border:1px dashed rgba(255,215,0,0.15);padding:6px 8px;border-radius:8px}
+  .timer-bar{height:8px;background:#0006;border-radius:8px;overflow:hidden;margin-top:10px}
+  .timer-fill{height:100%;background:linear-gradient(90deg,#fb7185,#fdba74);width:100%;transition:width 1s linear}
+  .install-btn{background:linear-gradient(90deg,#06b6d4,#60a5fa);color:#fff;padding:8px 12px;border-radius:10px;border:none}
+  .thumb{width:84px;height:84px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:#0006;display:inline-block;vertical-align:middle;margin-right:10px;background-size:cover}
+  @media (min-width:900px){ .container{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+<header><h1>🎌 Lakbay Kasaysayan — Classroom PWA (single file)</h1></header>
+
+<main class="container" id="app">
+  <section class="dialogue-box" role="region" aria-live="polite">
+    <div class="speaker" id="speaker">🧙 AKIRO</div>
+    <div class="dialogue" id="dialogue">Handa ka na bang lakbayin ang ating kasaysayan?</div>
+  </section>
+
+  <section class="card" id="player-card" aria-live="polite">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:10px;align-items:center;flex:1">
+        <div class="thumb" id="stageThumb" title="Stage preview"></div>
+        <div style="flex:1">
+          <label for="playerName">Pangalan</label>
+          <input id="playerName" type="text" placeholder="Ilagay ang pangalan" />
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <div style="width:150px">
+              <label for="grade">Grade Level</label>
+              <select id="grade">
+                <option>Grade 4</option><option>Grade 5</option><option>Grade 6</option>
+                <option>Grade 7</option><option>Grade 8</option><option>Grade 9</option>
+                <option>Grade 10</option>
+              </select>
+            </div>
+            <div>
+              <label for="timerToggle">Timer (per tanong)</label>
+              <select id="timerToggle" class="small">
+                <option value="off">Off</option><option value="15">15s</option><option value="20">20s</option><option value="30">30s</option>
+              </select>
+            </div>
+            <div>
+              <label for="audioToggle">Ambient audio</label>
+              <select id="audioToggle" class="small">
+                <option value="on">On</option><option value="off">Off</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="min-width:240px">
+        <div style="margin-top:4px">
+          <button class="btn" id="saveProfile">Simulan</button>
+          <button class="btn secondary" id="resetProgress">I-reset</button>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn secondary" id="downloadIcon192">Download Icon 192</button>
+          <button class="btn secondary" id="downloadIcon512">Download Icon 512</button>
+          <button class="btn secondary" id="downloadHTML">Download HTML</button>
+          <button class="btn secondary" id="makeBlobLink">Open Blob Link</button>
+          <button class="install-btn" id="installBtn" style="display:none">Install</button>
+        </div>
+
+        <div style="margin-top:8px" class="meta">SW: <span id="swStatus">checking…</span></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <div class="meta left">Serve via localhost/HTTPS to enable install & offline caching.</div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn secondary" id="copyLocalCmd">Copy local server cmd</button></div>
+    </div>
+
+  </section>
+
+  <section class="card">
+    <h3 style="margin:0">Mga Yugto <span class="badge" id="unlockedBadge">1</span></h3>
+    <p class="meta">Piliin ang yugto. Sagutin ang mga tanong para i-unlock ang susunod.</p>
+    <div class="stages-grid" id="stages"></div>
+  </section>
+
+  <section class="card" id="play-area" style="display:none">
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div>
+        <div id="stage-header" class="meta" style="font-weight:700"></div>
+        <div id="qMeta" class="meta" style="margin-top:6px"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="meta">Score: <strong id="currentScore">0</strong>/<span id="totalQ">0</span></div>
+        <button class="btn secondary" id="quitBtn">Bumalik sa Mapa</button>
+      </div>
+    </div>
+
+    <div id="question-container" class="question-box" role="region" aria-live="polite" style="margin-top:10px"></div>
+
+    <div class="row" style="margin-top:12px;align-items:center;justify-content:space-between">
+      <div style="display:flex;gap:8px">
+        <button class="btn small" id="hintBtn">Hint (alis isang maling sagot)</button>
+        <button class="btn small" id="nextBtn">Susunod</button>
+      </div>
+      <div style="width:260px">
+        <div class="timer-bar" id="timerBar" style="display:none"><div class="timer-fill" id="timerFill"></div></div>
+      </div>
+    </div>
+
+    <div id="leaderboardWrap" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card" id="teacherPanel" style="display:none">
+    <div class="teacher-panel" id="teacherInner">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:700">Teacher / Admin</div><div class="meta" style="margin-top:6px">Admin tools: reset, export/import, pre-fill leaderboards.</div></div>
+        <div style="display:flex;gap:6px"><button id="teacherLogoutBtn" class="btn secondary">Logout</button></div>
+      </div>
+
+      <hr style="border-color:rgba(255,255,255,0.03);margin:12px 0" />
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700">Export / Import</div>
+          <div class="meta">Export current state + leaderboards or import a previously exported file.</div>
+          <div style="margin-top:8px">
+            <button class="btn" id="exportBtn">Export Progress</button>
+            <input id="importFile" type="file" accept="application/json" class="file-input" />
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight:700">Reset & Prefill</div>
+          <div class="meta">Reset all progress and leaderboards, or upload a JSON to prefill leaderboards/state.</div>
+          <div style="margin-top:8px">
+            <button class="btn secondary" id="resetAllBtn">Reset All (progress + leaderboards)</button>
+            <button class="btn" id="prefillBtn">Prefill from JSON</button>
+            <input id="prefillFile" type="file" accept="application/json" class="file-input" />
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight:700">Teacher Password</div>
+          <div class="meta">Set a new teacher password (stored locally).</div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <input id="newTeacherPwd" type="text" placeholder="New password" style="padding:8px;border-radius:8px;background:#0006;border:1px solid #333;color:#fff" />
+            <button class="btn" id="setTeacherPwdBtn">Set</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="teacherLog" style="margin-top:12px;color:#cbd5e1;font-size:0.9rem"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Gawa para sa pag-aaral — all assets are embedded; export/import uses JSON.</footer>
+
+<script>
+/* Full single-file game code
+   - Improved visuals + extra questions per stage (6 questions each)
+   - Inline SVG thumbnails for stages (data URIs)
+   - Embedded SW + manifest generation + icon download helpers
+   - Teacher tools (export/import/prefill/reset), leaderboards, timer, hint, confetti, WebAudio
+   Note: this is the same full app as earlier but with additional questions and improved UI polish.
+*/
+
+// ---------- Core data (expanded questions) ----------
+const stagesData = [
+  { id:1, title:'🏝️ Stage 1 — Ang Sinaunang Pilipinas', desc:'Mga sinaunang pamayanan, paniniwala, at kultura.', questions:[
+    {q:'Ano ang tawag sa sinaunang sistema ng pagsulat ng Pilipinas bago dumating ang Espanyol?', choices:['Baybayin','Alibata','Kudlit','Kulitan'], a:0},
+    {q:'Ano ang pangunahing kabuhayan ng maraming sinaunang pamayanan sa kapuluan?', choices:['Pagsasaka','Industriya','Kalakalan','Pagmimina'], a:0},
+    {q:'Anong uri ng bahay ang karaniwang tirahan sa tabing-dagat noong sinaunang panahon?', choices:['Bahay Kubo','Bahay na bato','Bahay na bato at bakal','Mansion'], a:0},
+    {q:'Anong tawag sa mga maalamat na bayani at diwata ng mga sinaunang Pilipino?', choices:['Anito','Datu','Babaylan','Guwapo'], a:0},
+    {q:'Ano ang tawag sa sistemang panlipunan na pinamumunuan ng mga pinuno sa pamayanan?', choices:['Barangay','Kapisanan','Komunidad','Sindikato'], a:0},
+    {q:'Ano ang ginagamit na kagamitan sa pangingisda ng mga sinaunang katutubo?', choices:['Bangka at lambat','Traktor','Bulldozer','Radar'], a:0}
+  ]},
+  { id:2, title:'⛪ Stage 2 — Panahon ng mga Espanyol', desc:'Panahon ng kolonisasyon at pagbabago.', questions:[
+    {q:'Sino ang nagdeklarang kalayaan ng Pilipinas noong 1898?', choices:['Andres Bonifacio','Jose Rizal','Emilio Aguinaldo','Apolinario Mabini'], a:2},
+    {q:'Anong institusyon ang nagpalaganap ng Kristiyanismo sa Pilipinas?', choices:['Ang simbahan','Ang paaralan','Ang ospital','Ang pamilihan'], a:0},
+    {q:'Ano ang tawag sa malaking lupain na pag-aari ng mga prayle?', choices:['Encomienda','Hacienda','Balae','Baryo'], a:1},
+    {q:'Sino ang isinilang na bayani na sinentensiyahan at pinatay noong 1896, na naging inspirasyon sa mga Pilipino?', choices:['Andres Bonifacio','Jose Rizal','Emilio Aguinaldo','Marcelo del Pilar'], a:1},
+    {q:'Anong sistemang pananagutan ang ipinakilala ng mga Espanyol (tax/tribute system)?', choices:['Tributo','Income tax','VAT','Social security'], a:0},
+    {q:'Ano ang tawag sa kilusan na tumutuligsa sa abusadong panginoon at prayle?', choices:['Ilustrado reform movement','Katipunan','Masonerya','Komunismo'], a:0}
+  ]},
+  { id:3, title:'⚔️ Stage 3 — Himagsikan at Kalayaan', desc:'Pakikipaglaban para sa kalayaan.', questions:[
+    {q:'Saan isinulat ni Jose Rizal ang Noli Me Tangere?', choices:['España','Pilipinas','France','Germany'], a:0},
+    {q:'Ano ang ibig sabihin ng Katipunan?', choices:['Samahan ng mga mag-aaral','Samahan ng mga maghihimagsik','Samahan ng mga mangangalakal','Samahan ng mga pari'], a:1},
+    {q:'Sino ang tinaguriang "Ama ng Himagsikan"?', choices:['Andres Bonifacio','Emilio Aguinaldo','Jose Rizal','Aguinaldo Bonifacio'], a:0},
+    {q:'Anong mahalagang pangyayari ang naganap sa Balintawak noong 1896?', choices:['Pag-aalsa ng Katipunan','Pagpapasinaya ng ospital','Pagpapatayo ng paaralan','Pagkakatatag ng pamilihan'], a:0},
+    {q:'Ano ang naging papel ni Gabriela Silang sa kasaysayan?', choices:['Pinuno ng himagsikan','Pintor','Manunulat','Mang-aawit'], a:0},
+    {q:'Sino ang naging unang Pangulo ng Pilipinas (unang republika)?', choices:['Andres Bonifacio','Emilio Aguinaldo','Jose Rizal','Sergio Osmeña'], a:1}
+  ]},
+  { id:4, title:'🏙️ Stage 4 — Modernong Pilipinas', desc:'Mga pangyayari mula sa ika-20 siglo hanggang ngayon.', questions:[
+    {q:'Anong pangyayari ang nagbigay daan sa ikalawang digmaang pandaigdig sa Pilipinas?', choices:['Pananakop ng Hapon','Pananakop ng Espanya','Rebolusyon','Pagkaupo ng bagong presidente'], a:0},
+    {q:'Anong araw ipinagdiriwang ang Araw ng Kalayaan ng Pilipinas?', choices:['June 12','March 1','August 31','December 30'], a:0},
+    {q:'Ano ang isang modernong isyung panlipunan na madalas pag-usapan?', choices:['Klima at kalikasan','Paglalakbay sa kalawakan','Pagkakaroon ng diyos','Panahon ng bato'], a:0},
+    {q:'Anong mahalagang reporma ang naganap matapos ang ikalawang digmaan?', choices:['Pagsasaayos ng salapi at pag-ayos ng infrastruktura','Pagbabawal sa edukasyon','Pagtayo ng kastilyo','Paglilipat ng kabisera sa ibang bansa'], a:0},
+    {q:'Ano ang tawag sa sistema ng pamamahala na ginagamit ngayon sa Pilipinas?', choices:['Demokrasya','Monarkiya','Diktadura','Komunismo'], a:0},
+    {q:'Ano ang isang paraan para makibahagi ang mga kabataan sa pag-aalaga ng klima?', choices:['Pag-recycle at pagtanim ng puno','Pagtapon ng basura sa ilog','Walang paggawa','Pagtanggi sa edukasyon'], a:0}
+  ]}
+];
+
+// ---------- DOM refs (selected) ----------
+const speaker = document.getElementById('speaker');
+const dialogue = document.getElementById('dialogue');
+const stagesEl = document.getElementById('stages');
+const stageThumb = document.getElementById('stageThumb');
+const unlockedBadge = document.getElementById('unlockedBadge');
+const progressText = document.getElementById('progressText');
+const saveProfileBtn = document.getElementById('saveProfile');
+const resetProgressBtn = document.getElementById('resetProgress');
+const playerName = document.getElementById('playerName');
+const grade = document.getElementById('grade');
+const timerToggle = document.getElementById('timerToggle');
+const audioToggle = document.getElementById('audioToggle');
+
+const playArea = document.getElementById('play-area');
+const stageHeader = document.getElementById('stage-header');
+const qMeta = document.getElementById('qMeta');
+const questionContainer = document.getElementById('question-container');
+const nextBtn = document.getElementById('nextBtn');
+const quitBtn = document.getElementById('quitBtn');
+const hintBtn = document.getElementById('hintBtn');
+const timerBar = document.getElementById('timerBar');
+const timerFill = document.getElementById('timerFill');
+const currentScoreEl = document.getElementById('currentScore');
+const totalQEl = document.getElementById('totalQ');
+const leaderboardWrap = document.getElementById('leaderboardWrap');
+
+// icons & downloads
+const downloadIcon192 = document.getElementById('downloadIcon192');
+const downloadIcon512 = document.getElementById('downloadIcon512');
+const downloadHTML = document.getElementById('downloadHTML');
+const makeBlobLink = document.getElementById('makeBlobLink');
+const copyLocalCmd = document.getElementById('copyLocalCmd');
+
+// teacher
+const teacherLoginBtn = document.getElementById('teacherLoginBtn');
+const teacherPanel = document.getElementById('teacherPanel');
+const exportBtn = document.getElementById('exportBtn');
+const importFile = document.getElementById('importFile');
+const resetAllBtn = document.getElementById('resetAllBtn');
+const prefillBtn = document.getElementById('prefillBtn');
+const prefillFile = document.getElementById('prefillFile');
+const setTeacherPwdBtn = document.getElementById('setTeacherPwdBtn');
+const newTeacherPwd = document.getElementById('newTeacherPwd');
+const teacherLog = document.getElementById('teacherLog');
+const installBtn = document.getElementById('installBtn');
+
+const SW_STATUS = document.getElementById('swStatus');
+
+// ---------- State & storage ----------
+const STORAGE_KEY = 'lakbay_kasaysayan_v_final';
+let state = { name:'', grade:'', unlockedStage:1, scores:{}, prefs:{timer:'off', audio:'on'} };
+let current = { stageId:null, qIndex:0, correct:0, total:0, answers:[], timer:null, timeLeft:0, hintUsed:false };
+const TEACHER_PWD_KEY = 'lk_teacher_pwd';
+
+function loadState(){ try{ const raw = localStorage.getItem(STORAGE_KEY); if(raw) Object.assign(state, JSON.parse(raw)); }catch(e){console.warn(e);} }
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+loadState();
+
+// ---------- small utilities ----------
+const nowISO = ()=> new Date().toISOString();
+function svgDataURI(svg){ return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg); }
+function stageSVG(stageId){
+  if(stageId===1) return `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect rx='12' width='120' height='120' fill='#07212b'/><g transform='translate(12,12)'><circle cx='24' cy='24' r='20' fill='#FFD700' opacity='0.14'/><path d='M8 56c6-8 20-10 32-8s22 6 32 8' stroke='#60a5fa' stroke-width='3' fill='none' stroke-linecap='round'/><rect x='6' y='10' width='32' height='14' rx='4' fill='#60a5fa' opacity='0.12'/></g></svg>`;  
+  if(stageId===2) return `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect rx='12' width='120' height='120' fill='#071225'/><g transform='translate(12,12)'><path d='M10 90 L30 30 L50 90 Z' fill='#FFD700' opacity='0.18'/><rect x='60' y='24' width='36' height='48' rx='6' fill='#60a5fa' opacity='0.12'/></g></svg>`;
+  if(stageId===3) return `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect rx='12' width='120' height='120' fill='#081026'/><g transform='translate(14,14)'><path d='M10 70 L40 20 L70 70 L40 60 Z' fill='#fb7185' opacity='0.14'/><circle cx='92' cy='30' r='10' fill='#ffd700' opacity='0.12'/></g></svg>`;
+  return `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect rx='12' width='120' height='120' fill='#041028'/><g transform='translate(12,12)'><rect x='6' y='10' width='92' height='40' rx='6' fill='#60a5fa' opacity='0.10'/><rect x='6' y='56' width='92' height='36' rx='6' fill='#FFD700' opacity='0.08'/></g></svg>`;
+}
+
+// ---------- UI render ----------
+playerName.value = state.name || '';
+grade.value = state.grade || 'Grade 6';
+timerToggle.value = state.prefs.timer || 'off';
+audioToggle.value = state.prefs.audio || 'on';
+unlockedBadge.innerText = state.unlockedStage || 1;
+stageThumb.style.backgroundImage = svgDataURI(stageSVG(1)); // initial
+
+function renderStages(){
+  stagesEl.innerHTML = '';
+  stagesData.forEach(s=>{
+    const card = document.createElement('div'); card.className='stage';
+    if(state.unlockedStage < s.id) card.classList.add('locked');
+    const img = document.createElement('div'); img.className='thumb'; img.style.backgroundImage = `url("${svgDataURI(stageSVG(s.id))}")`; img.style.backgroundSize='cover';
+    const h = document.createElement('h3'); h.innerText = s.title;
+    const p = document.createElement('p'); p.innerText = s.desc;
+    const meta = document.createElement('div'); meta.className='meta';
+    const score = state.scores[s.id] ?? null;
+    meta.innerText = score==null ? 'Hindi pa nasubukan' : `Score: ${score}/${s.questions.length}`;
+    const barwrap = document.createElement('div'); barwrap.className='progress-bar';
+    const fill = document.createElement('div'); fill.className='progress-fill';
+    const percent = (score==null) ? 0 : Math.round(100 * (score / s.questions.length));
+    fill.style.width = percent + '%'; barwrap.appendChild(fill);
+    const actions = document.createElement('div'); actions.style.marginTop='8px';
+    const btn = document.createElement('button'); btn.className='btn'; btn.innerText = (state.unlockedStage>=s.id) ? 'Simulan' : 'Naka‑lock';
+    btn.disabled = (state.unlockedStage < s.id);
+    btn.addEventListener('click', ()=> startStage(s.id));
+    actions.appendChild(btn);
+    const lb = createLeaderboardSnippet(s.id);
+    card.appendChild(img); card.appendChild(h); card.appendChild(p); card.appendChild(meta); card.appendChild(barwrap); card.appendChild(actions);
+    if(lb) card.appendChild(lb);
+    card.addEventListener('mouseenter', ()=> stageThumb.style.backgroundImage = `url("${svgDataURI(stageSVG(s.id))}")`);
+    stagesEl.appendChild(card);
+  });
+  unlockedBadge.innerText = state.unlockedStage || 1;
+  updateProgressText();
+}
+
+function updateProgressText(){ const done = Object.keys(state.scores).length; progressText.innerText = done===0 ? 'Wala pang laro' : `${done} yugto natapos`; }
+
+renderStages();
+
+/* ------------------- Profile actions ------------------- */
+saveProfileBtn.addEventListener('click', ()=>{
+  state.name = playerName.value.trim() || 'Mag-aaral';
+  state.grade = grade.value;
+  state.prefs = state.prefs || {};
+  state.prefs.timer = timerToggle.value;
+  state.prefs.audio = audioToggle.value;
+  saveState();
+  dialogue.innerText = `Maligayang paglalakbay, ${state.name}! Piliin ang yugto.`;
+  renderStages();
+});
+resetProgressBtn.addEventListener('click', ()=>{
+  if(!confirm('I-reset ang lahat ng progress?')) return;
+  stagesData.forEach(s => localStorage.removeItem(leaderboardKey(s.id)));
+  state = { name:'', grade:'', unlockedStage:1, scores:{}, prefs:{timer:'off', audio:'on'} };
+  localStorage.removeItem(STORAGE_KEY); playerName.value=''; grade.value='Grade 6'; timerToggle.value='off'; audioToggle.value='on';
+  saveState(); renderStages(); updateProgressText(); dialogue.innerText='Progress na-reset. Magsimula muli.';
+});
+
+/* ------------------- Gameplay ------------------- */
+let currentTimer = null;
+function startStage(stageId){
+  const stage = stagesData.find(s=>s.id===stageId); if(!stage) return;
+  current.stageId = stageId; current.qIndex=0; current.correct=0; current.total=stage.questions.length; current.answers=[]; current.hintUsed=false;
+  playArea.style.display='block'; stageHeader.innerText = stage.title; qMeta.innerText = stage.desc;
+  totalQEl.innerText = current.total; currentScoreEl.innerText = '0';
+  dialogue.innerText = `Nagsimula ka sa ${stage.title}. Good luck, ${state.name || 'Mag-aaral'}!`;
+  if(state.prefs && state.prefs.audio === 'on') startAmbientForStage(stageId);
+  renderQuestion();
+  showLeaderboard(stageId);
+}
+
+function renderQuestion(){
+  const stage = stagesData.find(s=>s.id===current.stageId); if(!stage) return;
+  const qObj = stage.questions[current.qIndex];
+  questionContainer.innerHTML = '';
+  const qEl = document.createElement('div'); qEl.innerHTML = `<strong>Tanong ${current.qIndex+1}:</strong> <div style="margin-top:8px">${qObj.q}</div>`;
+  questionContainer.appendChild(qEl);
+  const choices = document.createElement('div'); choices.className='choices';
+  qObj.choices.forEach((ch, idx)=>{
+    const btn = document.createElement('button'); btn.className='choice'; btn.type='button'; btn.innerText = ch;
+    btn.setAttribute('data-idx', idx); btn.addEventListener('click', ()=> selectAnswer(idx, btn));
+    choices.appendChild(btn);
+  });
+  questionContainer.appendChild(choices);
+  hintBtn.disabled = false; current.hintUsed = false;
+  const t = parseInt(state.prefs && state.prefs.timer || 'off', 10);
+  if(!isNaN(t) && t>0){
+    timerBar.style.display='block'; current.timeLeft = t; timerFill.style.width='100%';
+    if(currentTimer) clearInterval(currentTimer);
+    currentTimer = setInterval(()=>{ current.timeLeft--; const pct = Math.max(0,(current.timeLeft/t)*100); timerFill.style.width = pct + '%'; if(current.timeLeft <= 0){ clearInterval(currentTimer); currentTimer=null; autoTimeout(); } }, 1000);
+  } else { timerBar.style.display='none'; if(currentTimer){ clearInterval(currentTimer); currentTimer=null; } }
+  nextBtn.disabled = true; nextBtn.innerText = (current.qIndex+1<current.total)?'Sumagot muna':'Tapusin';
+  setTimeout(()=>{ const c = questionContainer.querySelector('.choice'); if(c) c.focus(); }, 60);
+}
+
+function selectAnswer(selectedIdx, btnEl){
+  const stage = stagesData.find(s=>s.id===current.stageId); const qObj = stage.questions[current.qIndex];
+  const all = questionContainer.querySelectorAll('.choice'); all.forEach(b => b.disabled = true);
+  if(currentTimer){ clearInterval(currentTimer); currentTimer=null; timerBar.style.display='none'; }
+  const correct = selectedIdx === qObj.a;
+  if(correct){ current.correct++; playSound('correct'); btnEl.classList.add('correct'); } else { playSound('wrong'); btnEl.classList.add('wrong'); }
+  current.answers.push({qIndex: current.qIndex, selected: selectedIdx, correct: qObj.a});
+  const res = document.createElement('div'); res.className = 'result ' + (correct ? 'good' : 'bad'); res.innerText = correct ? 'Tama! Magaling.' : `Mali. Tama: ${qObj.choices[qObj.a]}`;
+  questionContainer.appendChild(res);
+  currentScoreEl.innerText = String(current.correct); nextBtn.disabled = false; nextBtn.innerText = (current.qIndex+1<current.total)?'Susunod':'Tapusin';
+}
+
+function autoTimeout(){
+  const stage = stagesData.find(s=>s.id===current.stageId); const qObj = stage.questions[current.qIndex];
+  const all = questionContainer.querySelectorAll('.choice'); all.forEach(b => b.disabled = true);
+  current.answers.push({qIndex: current.qIndex, selected: -1, correct: qObj.a});
+  const res = document.createElement('div'); res.className = 'result bad'; res.innerText = 'Oras na! Itinuturing na maling sagot.';
+  questionContainer.appendChild(res); playSound('wrong'); nextBtn.disabled = false; nextBtn.innerText = (current.qIndex+1<current.total)?'Susunod':'Tapusin';
+}
+
+nextBtn.addEventListener('click', ()=>{ if(nextBtn.disabled) return; if(current.qIndex+1 < current.total){ current.qIndex++; renderQuestion(); } else finishStage(); });
+quitBtn.addEventListener('click', ()=>{ playArea.style.display='none'; dialogue.innerText='Bumalik sa mapa.'; stopAmbient(); if(currentTimer){ clearInterval(currentTimer); currentTimer=null; timerBar.style.display='none'; } });
+
+hintBtn.addEventListener('click', ()=>{
+  if(current.hintUsed) return;
+  const stage = stagesData.find(s=>s.id===current.stageId); const qObj = stage.questions[current.qIndex];
+  const choices = Array.from(questionContainer.querySelectorAll('.choice')).filter(b=>!b.disabled);
+  const wrongChoices = choices.filter(b => parseInt(b.dataset.idx,10) !== qObj.a);
+  if(wrongChoices.length === 0) return;
+  const pick = wrongChoices[Math.floor(Math.random()*wrongChoices.length)]; pick.disabled = true; pick.style.opacity = '0.5'; current.hintUsed = true; hintBtn.disabled = true; playSound('hint');
+});
+
+function finishStage(){
+  const stage = stagesData.find(s=>s.id===current.stageId);
+  state.scores[current.stageId] = current.correct;
+  const passThreshold = Math.ceil(stage.questions.length * 0.6);
+  let msg = `Nakatapos ka ng ${stage.title}. Score: ${current.correct}/${current.total}.`;
+  if(current.correct >= passThreshold){
+    playConfetti(); playSound('unlock');
+    if(state.unlockedStage < current.stageId+1){ state.unlockedStage = Math.min(current.stageId+1, stagesData.length); msg += ' Nakakuha ka ng pass! Susunod na yugto na-unlock.'; } else { msg += ' Nakapasa ka!'; }
+  } else { playSound('wrong'); msg += ' Hindi pa sapat ang puntos upang i-unlock ang susunod na yugto. Subukan muli!'; }
+  saveState();
+  addToLeaderboard(current.stageId, { name: state.name || 'Mag-aaral', score: current.correct, total: current.total, date: nowISO() });
+  renderStages(); updateProgressText(); playArea.style.display='none'; dialogue.innerText = msg; stopAmbient();
+  setTimeout(()=>{ if(confirm(`${msg}\n\nGusto mo ng maikling review ng mga sagot?`)){ const review = current.answers.map(a=>{ const st = stagesData.find(s=>s.id===current.stageId); const q = st.questions[a.qIndex]; return `${a.qIndex+1}. ${q.q} — Pinili: ${ (a.selected>=0) ? q.choices[a.selected] : 'Walang sagot' } — Tama: ${q.choices[a.correct]}`; }).join('\n\n'); alert(review); } },120);
+}
+
+/* ---------- Leaderboard ---------- */
+function leaderboardKey(stageId){ return `lk_leaderboard_stage_${stageId}`; }
+function getLeaderboard(stageId){ try{ const raw = localStorage.getItem(leaderboardKey(stageId)); return raw ? JSON.parse(raw) : []; }catch(e){return[];} }
+function saveLeaderboard(stageId, list){ localStorage.setItem(leaderboardKey(stageId), JSON.stringify(list)); }
+function addToLeaderboard(stageId, entry){ const list = getLeaderboard(stageId); list.push(entry); list.sort((a,b)=> b.score - a.score || (a.date < b.date ? 1 : -1)); saveLeaderboard(stageId, list.slice(0,10)); }
+function createLeaderboardSnippet(stageId){ const list = getLeaderboard(stageId); if(list.length === 0) return null; const wrap = document.createElement('div'); wrap.className='leaderboard'; wrap.innerHTML = `<div style="font-weight:700;margin-bottom:6px">Leaderboard</div>`; const ul = document.createElement('div'); ul.style.fontSize='0.9rem'; list.slice(0,3).forEach((it,i)=>{ const line = document.createElement('div'); line.innerText = `${i+1}. ${it.name} — ${it.score}/${stagesData.find(s=>s.id===stageId).questions.length} (${new Date(it.date).toLocaleDateString()})`; ul.appendChild(line); }); wrap.appendChild(ul); return wrap; }
+function showLeaderboard(stageId){ const wrap = document.createElement('div'); wrap.className='leaderboard'; wrap.innerHTML = `<div style="font-weight:700;margin-bottom:6px">Leaderboard — Buo</div>`; const list = getLeaderboard(stageId); if(list.length===0){ wrap.innerHTML += '<div class="meta">Wala pang scores</div>'; leaderboardWrap.innerHTML=''; leaderboardWrap.appendChild(wrap); return; } list.forEach((it,i)=>{ const line = document.createElement('div'); line.style.display='flex'; line.style.justifyContent='space-between'; line.style.padding='4px 0'; line.innerHTML = `<div>${i+1}. ${it.name}</div><div class="meta">${it.score}/${stagesData.find(s=>s.id===stageId).questions.length}</div>`; wrap.appendChild(line); }); leaderboardWrap.innerHTML=''; leaderboardWrap.appendChild(wrap); }
+
+/* ---------- Confetti ---------- */
+const confettiCtx = confettiCanvas.getContext ? confettiCanvas.getContext('2d') : null;
+let confettiPieces = [];
+function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeConfetti); resizeConfetti();
+function playConfetti(){ if(!confettiCtx) return; for(let i=0;i<80;i++){ confettiPieces.push({ x: Math.random()*confettiCanvas.width, y: -20 - Math.random()*200, vx: Math.random()*6-3, vy: Math.random()*6 + 2, size: 6 + Math.random()*8, color: ['#ffd700','#60a5fa','#fb7185','#34d399','#f97316'][Math.floor(Math.random()*5)], rot: Math.random()*360, vro: Math.random()*10-5, ttl: 200 + Math.random()*100 }); } let frames = 0; function step(){ frames++; confettiCtx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height); confettiPieces.forEach(p=>{ p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.rot += p.vro; p.ttl--; confettiCtx.save(); confettiCtx.translate(p.x,p.y); confettiCtx.rotate(p.rot*Math.PI/180); confettiCtx.fillStyle = p.color; confettiCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6); confettiCtx.restore(); }); confettiPieces = confettiPieces.filter(p=>p.y < confettiCanvas.height + 50 && p.ttl>0); if(confettiPieces.length>0 && frames<600) requestAnimationFrame(step); else confettiCtx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height); } requestAnimationFrame(step); }
+
+/* ---------- Audio (ambient + feedback) ---------- */
+const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+let ambientNodes = null;
+function resumeAudioContext(){ if(!audioCtx) return; if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{}); }
+function startAmbientForStage(stageId){ if(!audioCtx) return; stopAmbient(); const gain = audioCtx.createGain(); gain.gain.value = 0.08; const oscA = audioCtx.createOscillator(); const oscB = audioCtx.createOscillator(); oscA.type = 'sine'; oscB.type = 'sine'; const base = [220,196,174,150][Math.max(0,stageId-1)]; oscA.frequency.value = base; oscB.frequency.value = base * 1.01; const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 600; const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.08; const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 400; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); oscA.connect(filter); oscB.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); oscA.start(); oscB.start(); lfo.start(); ambientNodes = { oscA, oscB, filter, gain, lfo, lfoGain }; }
+function stopAmbient(){ if(!ambientNodes) return; try{ ambientNodes.oscA.stop(); ambientNodes.oscB.stop(); ambientNodes.lfo.stop(); }catch(e){} ambientNodes=null; }
+function playTone(freq, type='sine', time=0.12, gain=0.12){ if(!audioCtx) return; const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = type; o.frequency.value = freq; g.gain.value = gain; o.connect(g); g.connect(audioCtx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + time); o.stop(audioCtx.currentTime + time + 0.02); }
+function playSound(name){ if(!audioCtx) return; resumeAudioContext(); switch(name){ case 'correct': playTone(880,'sine',0.14,0.15); playTone(1320,'sine',0.08,0.06); break; case 'wrong': playTone(220,'sawtooth',0.26,0.14); break; case 'unlock': playTone(660,'triangle',0.18,0.18); playTone(880,'sine',0.12,0.12); break; case 'hint': playTone(440,'sine',0.10,0.08); break; default: break; } }
+
+/* ---------- Keyboard helpers ---------- */
+document.addEventListener('keydown', (e)=>{ if(playArea.style.display === 'block'){ if(e.key === 'ArrowRight' || e.key === 'Enter') nextBtn.click(); if(e.key === 'h' || e.key === 'H') hintBtn.click(); if(e.key === 'Escape') quitBtn.click(); } });
+
+/* ---------- Manifest + icon generation + SW registration ---------- */
+function simpleSVGForIcon(bg, glyph){
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="100%" height="100%" rx="64" fill="${bg}"/><g font-family="Segoe UI Emoji, Arial" font-size="260" text-anchor="middle" dominant-baseline="middle"><text x="256" y="300">${glyph}</text></g></svg>`;
+}
+function svgToPngDataUrl(svgString, size){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    img.onload = ()=>{
+      try { const canvas = document.createElement('canvas'); canvas.width = canvas.height = size; const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,size,size); ctx.drawImage(img, 0, 0, size, size); URL.revokeObjectURL(url); resolve(canvas.toDataURL('image/png')); } catch(e){ reject(e); }
+    };
+    img.onerror = (e)=> { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+let icon192DataUrl = null, icon512DataUrl = null, manifestUrl = null;
+(async function prepareIcons(){
+  try {
+    const svg192 = simpleSVGForIcon('#06202a','🏝'); const svg512 = simpleSVGForIcon('#041026','⚔');
+    icon192DataUrl = await svgToPngDataUrl(svg192, 192); icon512DataUrl = await svgToPngDataUrl(svg512, 512);
+  } catch(e){
+    icon192DataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(simpleSVGForIcon('#06202a','🏝'));
+    icon512DataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(simpleSVGForIcon('#041026','⚔'));
+  }
+  const manifest = { name:"Lakbay Kasaysayan", short_name:"Lakbay", start_url:"./", display:"standalone", theme_color:"#0f172a", background_color:"#071029", icons:[{src:icon192DataUrl,sizes:"192x192",type:"image/png"},{src:icon512DataUrl,sizes:"512x512",type:"image/png"}] };
+  const mf = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  manifestUrl = URL.createObjectURL(mf);
+  let link = document.querySelector('link[rel="manifest"]'); if(!link){ link = document.createElement('link'); link.rel='manifest'; document.head.appendChild(link); } link.href = manifestUrl;
+  if(icon192DataUrl) document.getElementById('stageThumb').style.backgroundImage = `url("${icon192DataUrl}")`;
+})();
+
+(function registerEmbeddedSW(){
+  if(!('serviceWorker' in navigator)){ SW_STATUS.innerText = 'hindi suportado'; return; }
+  const htmlPath = location.pathname.split('/').pop() || 'Lakbay_Kasaysayan_Game.html';
+  const scopePath = location.pathname.substring(0, location.pathname.lastIndexOf('/')+1) || './';
+  const swSource = `
+    const CACHE_NAME = 'lk-final-v1';
+    const PRECACHE = ['${htmlPath}'];
+    self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(PRECACHE)).catch(()=>{})); });
+    self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k=>Promise.all(k.map(key=> key!==CACHE_NAME ? caches.delete(key) : Promise.resolve())))); self.clients.claim(); });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(c=> c || fetch(e.request).then(resp => { if(e.request.method==='GET' && resp && resp.status===200) caches.open(CACHE_NAME).then(ca=> { try{ ca.put(e.request, resp.clone()); }catch(_){} }); return resp; }).catch(()=> { if(e.request.mode==='navigate' || (e.request.headers.get('accept')||'').includes('text/html')) return caches.match('${htmlPath}'); return new Response('Offline',{status:503}); } )));
+    });
+  `;
+  try {
+    const blob = new Blob([swSource], { type:'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url, { scope: scopePath }).then(reg=>{ SW_STATUS.innerText = 'registered'; setTimeout(()=>URL.revokeObjectURL(url),1500); if(reg.waiting) SW_STATUS.innerText='update-ready'; reg.addEventListener('updatefound', ()=>{ const inst = reg.installing; inst.addEventListener('statechange', ()=> SW_STATUS.innerText = inst.state ); }); if(navigator.serviceWorker.controller) SW_STATUS.innerText='active'; }).catch(err=>{ console.warn('SW register failed', err); SW_STATUS.innerText='register-failed'; });
+  } catch(e){ console.warn(e); SW_STATUS.innerText='error'; }
+  if(location.protocol === 'file:'){ SW_STATUS.innerText = 'file:// — SW unavailable (game still runs). Serve via localhost to enable caching.'; }
+})();
+
+/* ---------- Export / Import / Teacher tools ---------- */
+const exportBtnEl = document.getElementById('exportBtn');
+if(exportBtnEl) exportBtnEl.addEventListener('click', ()=> {
+  const exportObj = { state: state, leaderboards: {} };
+  stagesData.forEach(s => exportObj.leaderboards[s.id] = getLeaderboard(s.id));
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'lakbay_export_' + (new Date().toISOString().slice(0,10)) + '.json';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+
+const importFileEl = document.getElementById('importFile');
+if(importFileEl) importFileEl.addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader(); reader.onload = () => {
+    try{
+      const obj = JSON.parse(reader.result);
+      if(obj.state){ state = obj.state; saveState(); }
+      if(obj.leaderboards){ for(const k in obj.leaderboards){ const list = obj.leaderboards[k]; saveLeaderboard(parseInt(k,10), list); } }
+      renderStages(); updateProgressText(); teacherLog.innerText = 'Import successful.'; alert('Import successful.');
+    }catch(err){ teacherLog.innerText = 'Import failed: ' + err; alert('Import failed: ' + err); }
+  }; reader.readAsText(f);
+});
+
+const resetAllBtnEl = document.getElementById('resetAllBtn');
+if(resetAllBtnEl) resetAllBtnEl.addEventListener('click', ()=>{
+  if(!confirm('Papalitan nito ang lahat ng progress at leaderboards sa default. Sigurado ka ba?')) return;
+  stagesData.forEach(s => localStorage.removeItem(leaderboardKey(s.id)));
+  state = { name:'', grade:'', unlockedStage:1, scores:{}, prefs:{timer:'off', audio:'on'} };
+  localStorage.removeItem(STORAGE_KEY); saveState(); renderStages(); updateProgressText(); teacherLog.innerText = 'All reset completed.'; alert('All reset completed.');
+});
+
+const prefillBtnEl = document.getElementById('prefillBtn');
+if(prefillBtnEl) prefillBtnEl.addEventListener('click', ()=> prefillFileInput.click());
+if(prefillFileInput) prefillFileInput.addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader(); reader.onload = () => {
+    try{
+      const obj = JSON.parse(reader.result);
+      if(obj.leaderboards){ for(const k in obj.leaderboards){ saveLeaderboard(parseInt(k,10), obj.leaderboards[k]); } teacherLog.innerText = 'Leaderboards prefilling complete.'; alert('Prefill complete.'); renderStages(); }
+      if(obj.state){ state = obj.state; saveState(); renderStages(); updateProgressText(); teacherLog.innerText += ' State imported.'; }
+    }catch(err){ teacherLog.innerText = 'Prefill failed: '+err; alert('Prefill failed: '+err); }
+  }; reader.readAsText(f);
+});
+
+setTeacherPwdBtn && setTeacherPwdBtn.addEventListener('click', ()=>{ const v = newTeacherPwd.value.trim(); if(!v){ alert('Enter a non-empty password'); return; } localStorage.setItem(TEACHER_PWD_KEY, v); newTeacherPwd.value=''; teacherLog.innerText = 'Password updated.'; alert('Teacher password updated.'); });
+
+teacherLoginBtn && teacherLoginBtn.addEventListener('click', ()=>{ const pwd = prompt('Enter teacher password:'); if(!pwd) return; if(pwd === getTeacherPwd()){ teacherPanel.style.display='block'; teacherLog.innerText = 'Logged in as teacher.'; teacherLoginBtn.style.display='none'; } else { alert('Wrong password'); } });
+teacherLogoutBtn && teacherLogoutBtn.addEventListener('click', ()=>{ teacherPanel.style.display='none'; teacherLoginBtn.style.display='inline-block'; teacherLog.innerText='Logged out.'; });
+
+function getTeacherPwd(){ return localStorage.getItem(TEACHER_PWD_KEY) || 'teacher123'; }
+
+/* ---------- Leaderboard helpers (reused) ---------- */
+function leaderboardKey(stageId){ return `lk_leaderboard_stage_${stageId}`; }
+function getLeaderboard(stageId){ try{ const raw = localStorage.getItem(leaderboardKey(stageId)); return raw ? JSON.parse(raw) : []; }catch(e){return[];} }
+function saveLeaderboard(stageId, list){ localStorage.setItem(leaderboardKey(stageId), JSON.stringify(list)); }
+function addToLeaderboard(stageId, entry){ const list = getLeaderboard(stageId); list.push(entry); list.sort((a,b)=> b.score - a.score || (a.date < b.date ? 1 : -1)); saveLeaderboard(stageId, list.slice(0,10)); }
+function createLeaderboardSnippet(stageId){ const list = getLeaderboard(stageId); if(list.length === 0) return null; const wrap = document.createElement('div'); wrap.className='leaderboard'; wrap.innerHTML = `<div style="font-weight:700;margin-bottom:6px">Leaderboard</div>`; const ul = document.createElement('div'); ul.style.fontSize='0.9rem'; list.slice(0,3).forEach((it,i)=>{ const line = document.createElement('div'); line.innerText = `${i+1}. ${it.name} — ${it.score}/${stagesData.find(s=>s.id===stageId).questions.length} (${new Date(it.date).toLocaleDateString()})`; ul.appendChild(line); }); wrap.appendChild(ul); return wrap; }
+
+/* ---------- Download icons / HTML / blob link ---------- */
+downloadIcon192 && downloadIcon192.addEventListener('click', ()=> { if(icon192DataUrl) downloadDataUrl(icon192DataUrl, 'lakbay_icon_192.png'); else alert('Icons still generating — try again in a second.'); });
+downloadIcon512 && downloadIcon512.addEventListener('click', ()=> { if(icon512DataUrl) downloadDataUrl(icon512DataUrl, 'lakbay_icon_512.png'); else alert('Icons still generating — try again in a second.'); });
+downloadHTML && downloadHTML.addEventListener('click', ()=> { const docHtml = '<!doctype html>\n' + document.documentElement.outerHTML; downloadBlobContent(docHtml, 'Lakbay_Kasaysayan_Game.html', 'text/html'); });
+makeBlobLink && makeBlobLink.addEventListener('click', ()=> { const docHtml = '<!doctype html>\n' + document.documentElement.outerHTML; const blob = new Blob([docHtml], { type: 'text/html' }); const blobUrl = URL.createObjectURL(blob); window.open(blobUrl, '_blank'); });
+copyLocalCmd && copyLocalCmd.addEventListener('click', async ()=> { const cmd = 'python -m http.server 8000\\nOpen: http://localhost:8000/Lakbay_Kasaysayan_Game.html'; try { await navigator.clipboard.writeText(cmd); alert('Copied local server command to clipboard'); } catch(e){ prompt('Copy manually:', cmd); } });
+function downloadDataUrl(dataUrl, filename){ const a = document.createElement('a'); a.href = dataUrl; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); }
+function downloadBlobContent(textOrBlob, filename, type='text/html'){ const blob = (textOrBlob instanceof Blob) ? textOrBlob : new Blob([textOrBlob], { type }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=> URL.revokeObjectURL(url), 1500); }
+
+/* -------------------- Helper: small SVG for icons used in stage cards -------------------- */
+function svgForStageIcon(bg, fg, glyph){ return `<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><rect rx='12' width='120' height='120' fill='${bg}'/><g transform='translate(12,12)'><text x='48' y='68' font-family='Segoe UI Emoji, Arial' font-size='48' text-anchor='middle'>${glyph}</text></g></svg>`; }
+
+/* -------------------- Init icons generation for download using prior functions -------------------- */
+(async function initIcons(){
+  try {
+    const svg192 = simpleSVGForIcon('#06202a','🏝');
+    const svg512 = simpleSVGForIcon('#041026','⚔');
+    icon192DataUrl = await svgToPngDataUrl(svg192, 192);
+    icon512DataUrl = await svgToPngDataUrl(svg512, 512);
+  } catch(e){
+    icon192DataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(simpleSVGForIcon('#06202a','🏝'));
+    icon512DataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(simpleSVGForIcon('#041026','⚔'));
+  }
+  if(!manifestUrl){
+    const manifest = { name:"Lakbay Kasaysayan", short_name:"Lakbay", start_url:"./", display:"standalone", theme_color:"#0f172a", background_color:"#071029", icons:[{src:icon192DataUrl,sizes:"192x192",type:"image/png"},{src:icon512DataUrl,sizes:"512x512",type:"image/png"}] };
+    const mf = new Blob([JSON.stringify(manifest)], { type: 'application/json' }); manifestUrl = URL.createObjectURL(mf);
+    let link = document.querySelector('link[rel="manifest"]'); if(!link){ link = document.createElement('link'); link.rel='manifest'; document.head.appendChild(link); } link.href = manifestUrl;
+  }
+  if(icon192DataUrl) stageThumb.style.backgroundImage = `url("${icon192DataUrl}")`;
+})();
+
+/* -------------------- Final init -------------------- */
+if(!state.unlockedStage) state.unlockedStage = 1;
+saveState();
+playerName.addEventListener('keyup', (e)=>{ if(e.key==='Enter') saveProfileBtn.click(); });
+grade.addEventListener('keyup', (e)=>{ if(e.key==='Enter') saveProfileBtn.click(); });
+
+</script>
+</body>
+</html>
